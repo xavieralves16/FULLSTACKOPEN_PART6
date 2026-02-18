@@ -5,15 +5,20 @@ export const getAnecdotes = async () => {
   return response.json()
 }
 
-export const addAnecdote = async (content) => {
-  const anecdote = { content, votes: 0 }
+export const addAnecdote = async (anecdote) => {
   const response = await fetch(baseUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(anecdote)
   })
+
+  if (!response.ok) {
+    throw new Error('Anecdote must be at least 5 characters long')
+  }
+
   return response.json()
 }
+
 
 export const voteAnecdote = async (anecdote) => {
   const updated = { ...anecdote, votes: anecdote.votes + 1 }
