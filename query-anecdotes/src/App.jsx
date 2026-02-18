@@ -35,6 +35,7 @@ const App = () => {
 
   const createMutation = useMutation({
     mutationFn: addAnecdote,
+
     onSuccess: (newAnecdote) => {
       queryClient.setQueryData(['anecdotes'], (old) => [...old, newAnecdote])
 
@@ -46,8 +47,20 @@ const App = () => {
       setTimeout(() => {
         dispatch({ type: 'CLEAR_NOTIFICATION' })
       }, 5000)
+    },
+
+    onError: (error) => {
+      dispatch({
+        type: 'SET_NOTIFICATION',
+        payload: error.message
+      })
+
+      setTimeout(() => {
+        dispatch({ type: 'CLEAR_NOTIFICATION' })
+      }, 5000)
     }
   })
+
 
   if (isLoading) return <div>Loading data...</div>
   if (isError) return <div>Anecdote service not available</div>
