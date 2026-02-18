@@ -1,45 +1,61 @@
-import AnecdoteForm from './components/AnecdoteForm'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getAnecdotes, addAnecdote, voteAnecdote } from './services/anecdotes'
 import Notification from './components/Notification'
-import { useQuery } from '@tanstack/react-query'
-import { getAnecdotes } from './services/anecdotes'
+import AnecdoteForm from './components/AnecdoteForm'
+import AnecdoteList from './components/AnecdoteList'
 
 const App = () => {
-  const result = useQuery({
+  const queryClient = useQueryClient()
+  const [notification, setNotification] = useState('')
+
+  // Query para obter as anecdotes
+  const { data: anecdotes, isLoading, isError } = useQuery({
     queryKey: ['anecdotes'],
     queryFn: getAnecdotes,
-    retry: false, 
+    retry: false
   })
 
-  if (result.isLoading) {
-    return <div>loading data...</div>
-  }
+  // Mutation para votar numa anecdote
+  const voteMutation = useMutation({
+    mutationFn: voteAnecdote,
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['anecdotes'], (old) =>
+        old.map((a) => (a.id === updated.id ? updated : a))
+      )
+      setNotification(`You voted '${updated.content}'`)
+      setTimeout(() => setNotification(''), 5000)
+    }
+  })
 
-  if (result.isError) {
-    return <div>Anecdote service not available due to problems in server</div>
-  }
+  // Mutation para criar nova anecdote
+  const createMutation = useMutation({
+    mutationFn: addAnecdote,
+    onSuccess: (newAnecdote) => {
+      queryClient.setQueryData(['anecdotes'], (old) => [...old, newAnecdote])
+      setNotification(`You created '${newAnecdote.content}'`)
+      setTimeout(() => setNotification(''), 5000)
+    }
+  })
 
-  const anecdotes = result.data
+  // Loading / Error
+  if (isLoading) return <div>Loading data...</div>
+  if (isError) return <div>Anecdote service not available due to problems in server</div>
 
-  const handleVote = (anecdote) => {
-    console.log('vote', anecdote)
-  }
+  // Handlers
+  const handleVote = (anecdote) => voteMutation.mutate(anecdote)
+
+
+  const handleCreate = (content) =>
+    createMutation.mutate({ content, votes: 0 })
 
   return (
     <div>
       <h3>Anecdote app</h3>
 
-      <Notification />
-      <AnecdoteForm />
-
-      {anecdotes.map((anecdote) => (
-        <div key={anecdote.id}>
-          <div>{anecdote.content}</div>
-          <div>
-            has {anecdote.votes}
-            <button onClick={() => handleVote(anecdote)}>vote</button>
-          </div>
-        </div>
-      ))}
+      <Notification message={notification} />
+      <AnecdoteForm onCreate={handleCreate} />
+      <AnecdoteList anecdotes={anecdotes} onVote={handleVote} />
     </div>
   )
 }
